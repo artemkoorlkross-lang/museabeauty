@@ -1,54 +1,87 @@
-const menuButton=document.querySelector('.menu-trigger');
-const menu=document.querySelector('.menu-overlay');
-const topButton=document.querySelector('.to-top');
-const reducedMotion=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const nav = document.querySelector('.nav');
+const menu = document.querySelector('.menu');
+const menuButton = document.querySelector('.menu-btn');
+const toTop = document.querySelector('.to-top');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-function toggleMenu(force){
-  const open=force??!menu.classList.contains('open');
-  menu.classList.toggle('open',open);menuButton.classList.toggle('active',open);
-  menuButton.setAttribute('aria-expanded',String(open));menu.setAttribute('aria-hidden',String(!open));
-  document.body.classList.toggle('menu-open',open);menuButton.querySelector('span').textContent=open?'ZAMKNIJ':'MENU';
-  if(open)menu.querySelector('a').focus();
+function updateScroll() {
+  nav.classList.toggle('scrolled', scrollY > 30);
+  toTop.classList.toggle('show', scrollY > innerHeight);
+  if (!reducedMotion) document.querySelector('.hero-bg').style.transform = `translate3d(0,${scrollY * .1}px,0)`;
 }
-menuButton.addEventListener('click',()=>toggleMenu());
-menu.querySelectorAll('a').forEach(a=>a.addEventListener('click',()=>toggleMenu(false)));
-addEventListener('keydown',e=>{if(e.key==='Escape'&&menu.classList.contains('open'))toggleMenu(false)});
-addEventListener('scroll',()=>topButton.classList.toggle('show',scrollY>innerHeight),{passive:true});
+addEventListener('scroll', updateScroll, { passive: true });
+updateScroll();
 
-const services=[
- {name:'Paznokcie',word:'NAILS',color:'#efb69f',image:'https://images.unsplash.com/photo-1604654894610-df63bc536371?auto=format&fit=crop&w=1200&q=88',alt:'Pastelowy manicure — usługa paznokci',desc:'Kolor, forma i detal dopasowane do Twojego stylu — od czystego minimalizmu po subtelny nail art.',items:[['Manicure hybrydowy','60 min · 110 zł'],['Przedłużanie paznokci','120 min · 170 zł'],['Uzupełnienie żelowe','90 min · 140 zł']]},
- {name:'Rzęsy',word:'LASHES',color:'#c9bee9',image:'assets/images/musea-editorial.png',alt:'Naturalna stylizacja rzęs',desc:'Lekkość zamiast ciężaru. Podkreślamy oko, zachowując naturalny ruch i proporcje.',items:[['Lifting rzęs','75 min · 150 zł'],['Przedłużanie rzęs','120 min · od 180 zł']]},
- {name:'Brwi',word:'BROWS',color:'#bfd0b9',image:'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=1200&q=88',alt:'Naturalna stylizacja brwi',desc:'Kształt wyprowadzony z Twoich rysów twarzy. Miękko, symetrycznie, bez przerysowania.',items:[['Laminacja brwi','60 min · 130 zł'],['Regulacja i henna','45 min · 80 zł']]},
- {name:'Makijaż',word:'MAKEUP',color:'#e9c5ce',image:'https://images.unsplash.com/photo-1487412947147-5cebf100ffc2?auto=format&fit=crop&w=1200&q=88',alt:'Świeży makijaż okolicznościowy',desc:'Makijaż, który dobrze wygląda w świetle dziennym, na zdjęciach i przede wszystkim — na Tobie.',items:[['Makijaż okolicznościowy','90 min · 200 zł']]},
- {name:'Twarz',word:'SKIN',color:'#d9e791',image:'assets/images/musea-editorial.png',alt:'Pielęgnacja skóry twarzy',desc:'Świadoma pielęgnacja oparta na aktualnych potrzebach skóry, komforcie i odbudowie bariery.',items:[['Zabieg nawilżający','75 min · 220 zł'],['Oczyszczanie twarzy','90 min · 250 zł']]}
-];
-const serviceStage=document.querySelector('.service-stage'),serviceImage=document.querySelector('.service-visual img'),serviceWord=document.querySelector('.service-word'),serviceDetail=document.querySelector('.service-detail');
-function selectService(index){
- const s=services[index];
- document.querySelectorAll('[data-service]').forEach((b,i)=>{b.classList.toggle('active',i===index);b.setAttribute('aria-selected',String(i===index))});
- serviceStage.style.background=s.color;serviceWord.textContent=s.word;
- serviceDetail.innerHTML=`<span class="service-count">${String(index+1).padStart(2,'0')} / 05</span><h3>${s.name}</h3><p>${s.desc}</p><dl>${s.items.map(x=>`<div><dt>${x[0]}</dt><dd>${x[1]}</dd></div>`).join('')}</dl><a href="#rezerwacja">WYBIERAM TĘ USŁUGĘ ↗</a>`;
- serviceImage.parentElement.classList.add('changing');setTimeout(()=>{serviceImage.src=s.image;serviceImage.alt=s.alt;serviceImage.parentElement.classList.remove('changing')},220);
+menuButton.addEventListener('click', () => {
+  const open = menu.classList.toggle('open');
+  menuButton.classList.toggle('active', open);
+  menuButton.setAttribute('aria-expanded', String(open));
+  menuButton.setAttribute('aria-label', open ? 'Zamknij menu' : 'Otwórz menu');
+  document.body.style.overflow = open ? 'hidden' : '';
+});
+menu.querySelectorAll('a').forEach(link => link.addEventListener('click', () => {
+  menu.classList.remove('open'); menuButton.classList.remove('active');
+  menuButton.setAttribute('aria-expanded', 'false'); document.body.style.overflow = '';
+}));
+
+const revealObserver = new IntersectionObserver(entries => entries.forEach(entry => {
+  if (entry.isIntersecting) { entry.target.classList.add('visible'); revealObserver.unobserve(entry.target); }
+}), { threshold: .12 });
+document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+const counters = document.querySelectorAll('[data-count]');
+const countObserver = new IntersectionObserver(entries => entries.forEach(entry => {
+  if (!entry.isIntersecting) return;
+  const el = entry.target, target = Number(el.dataset.count), start = performance.now();
+  const tick = now => { const p = Math.min((now - start) / 1200, 1); el.textContent = Math.round(target * (1 - Math.pow(1 - p, 3))); if (p < 1) requestAnimationFrame(tick); };
+  reducedMotion ? el.textContent = target : requestAnimationFrame(tick); countObserver.unobserve(el);
+}), { threshold: .5 });
+counters.forEach(el => countObserver.observe(el));
+
+const lightbox = document.querySelector('.lightbox');
+const lightboxImage = lightbox.querySelector('img');
+document.querySelectorAll('[data-lightbox]').forEach(button => button.addEventListener('click', () => {
+  const image = button.querySelector('img'); lightboxImage.src = image.src; lightboxImage.alt = image.alt; lightbox.showModal();
+}));
+lightbox.querySelector('button').addEventListener('click', () => lightbox.close());
+lightbox.addEventListener('click', event => { if (event.target === lightbox) lightbox.close(); });
+
+const compare = document.querySelector('.compare');
+compare.querySelector('input').addEventListener('input', event => compare.style.setProperty('--pos', `${event.target.value}%`));
+
+const reviews = [...document.querySelectorAll('.review-stage article')];
+const reviewProgress = document.querySelector('.review-nav i');
+let activeReview = 0, reviewTimer;
+function showReview(index) {
+  activeReview = (index + reviews.length) % reviews.length;
+  reviews.forEach((review, i) => review.classList.toggle('active', i === activeReview));
+  reviewProgress.style.width = `${(activeReview + 1) / reviews.length * 100}%`;
 }
-document.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>selectService(Number(b.dataset.service))));
+function restartReviews() { clearInterval(reviewTimer); if (!reducedMotion) reviewTimer = setInterval(() => showReview(activeReview + 1), 6500); }
+document.querySelector('[data-prev]').addEventListener('click', () => { showReview(activeReview - 1); restartReviews(); });
+document.querySelector('[data-next]').addEventListener('click', () => { showReview(activeReview + 1); restartReviews(); });
+showReview(0); restartReviews();
 
-const lookTrack=document.querySelector('.look-track'),looks=[...document.querySelectorAll('.look')],lookProgress=document.querySelector('.look-progress i');let lookIndex=0,dragStart=0,dragX=0,dragging=false;
-function showLook(index){lookIndex=(index+looks.length)%looks.length;lookTrack.classList.remove('no-transition');lookTrack.style.transform=`translateX(-${lookIndex*100}%)`;looks.forEach((l,i)=>l.classList.toggle('active',i===lookIndex));lookProgress.style.width=`${(lookIndex+1)/looks.length*100}%`}
-document.querySelector('[data-look-prev]').onclick=()=>showLook(lookIndex-1);document.querySelector('[data-look-next]').onclick=()=>showLook(lookIndex+1);
-const viewport=document.querySelector('.look-viewport');viewport.addEventListener('pointerdown',e=>{dragging=true;dragStart=e.clientX;dragX=0;viewport.classList.add('dragging');viewport.setPointerCapture(e.pointerId);lookTrack.classList.add('no-transition')});viewport.addEventListener('pointermove',e=>{if(!dragging)return;dragX=e.clientX-dragStart;lookTrack.style.transform=`translateX(calc(-${lookIndex*100}% + ${dragX}px))`});function endDrag(){if(!dragging)return;dragging=false;viewport.classList.remove('dragging');Math.abs(dragX)>60?showLook(lookIndex+(dragX<0?1:-1)):showLook(lookIndex)}viewport.addEventListener('pointerup',endDrag);viewport.addEventListener('pointercancel',endDrag);
-
-const artists=[
- {first:'Natalia',last:'Lis',role:'STYLISTKA PAZNOKCI',photo:'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=1100&q=88',color:'#bfd0b9',text:'Minimalistyczne zdobienia, idealna linia światła i kolor dobrany do Ciebie, nie do algorytmu.'},
- {first:'Julia',last:'Wysocka',role:'STYLISTKA RZĘS',photo:'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=1100&q=88',color:'#c9bee9',text:'Lekkie stylizacje otwierające spojrzenie. Jej znak rozpoznawczy to efekt, którego nie trzeba tłumaczyć.'},
- {first:'Maja',last:'Pawlak',role:'BROW ARTIST',photo:'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?auto=format&fit=crop&w=1100&q=88',color:'#efb69f',text:'Czyta architekturę twarzy i wydobywa naturalny kierunek brwi. Precyzyjna, spokojna, bez szablonów.'},
- {first:'Zofia',last:'Król',role:'KOSMETOLOG',photo:'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?auto=format&fit=crop&w=1100&q=88',color:'#d9e791',text:'Łączy wiedzę o skórze z uważnością. Układa pielęgnację, która działa również poza gabinetem.'}
-];let artistIndex=0;const artistStage=document.querySelector('.artist-stage'),artistImg=artistStage.querySelector('figure img'),artistSurname=document.querySelector('.artist-surname'),artistCard=artistStage.querySelector('article');function showArtist(index){artistIndex=(index+artists.length)%artists.length;const a=artists[artistIndex];artistImg.style.opacity=0;setTimeout(()=>{artistImg.src=a.photo;artistImg.alt=`${a.first} ${a.last}, ${a.role.toLowerCase()}`;artistImg.style.opacity=1},180);artistStage.style.background=a.color;artistSurname.textContent=a.last.toUpperCase();artistCard.innerHTML=`<span>${String(artistIndex+1).padStart(2,'0')} / 04</span><p>${a.role}</p><h3>${a.first}<br>${a.last}</h3><blockquote>${a.text}</blockquote><a href="#rezerwacja">UMÓW WIZYTĘ ↗</a>`}document.querySelector('[data-artist-prev]').onclick=()=>showArtist(artistIndex-1);document.querySelector('[data-artist-next]').onclick=()=>showArtist(artistIndex+1);
-
-const reviews=[...document.querySelectorAll('.review-slider blockquote')],reviewBar=document.querySelector('.review-controls i');let reviewIndex=0;function showReview(index){reviewIndex=(index+reviews.length)%reviews.length;reviews.forEach((r,i)=>r.classList.toggle('active',i===reviewIndex));reviewBar.style.width=`${(reviewIndex+1)/reviews.length*100}%`}document.querySelector('[data-review-prev]').onclick=()=>showReview(reviewIndex-1);document.querySelector('[data-review-next]').onclick=()=>showReview(reviewIndex+1);
-
-const form=document.querySelector('.step-form'),steps=[...form.querySelectorAll('.form-step')],progressNumbers=[...form.querySelectorAll('.step-progress>span')],progressBar=form.querySelector('.step-progress i b'),back=form.querySelector('.back'),forward=form.querySelector('.forward'),submit=form.querySelector('.submit'),stepText=form.querySelector('.form-nav span b'),dateInput=form.querySelector('[type=date]');let step=0;dateInput.min=new Date().toISOString().slice(0,10);
-function validateStep(){const fields=[...steps[step].querySelectorAll('[required]')];for(const field of fields){if(!field.checkValidity()){field.reportValidity();return false}}return true}
-function renderStep(){steps.forEach((s,i)=>s.classList.toggle('active',i===step));progressNumbers.forEach((n,i)=>n.classList.toggle('active',i<=step));progressBar.style.width=`${step/3*100}%`;back.disabled=step===0;forward.style.display=step===3?'none':'';submit.style.display=step===3?'block':'none';stepText.textContent=step+1;steps[step].querySelector('legend').focus?.()}
-forward.onclick=()=>{if(validateStep()){step=Math.min(3,step+1);renderStep()}};back.onclick=()=>{step=Math.max(0,step-1);renderStep()};form.addEventListener('submit',e=>{e.preventDefault();if(!validateStep())return;form.reset();step=0;renderStep();const toast=document.querySelector('.toast');toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),4800)});
-
-if(!reducedMotion){const orbit=document.querySelector('.orbit');addEventListener('pointermove',e=>{orbit.style.translate=`${(e.clientX/innerWidth-.5)*7}px ${(e.clientY/innerHeight-.5)*7}px`},{passive:true})}
+const dateInput = document.querySelector('input[type="date"]');
+dateInput.min = new Date().toISOString().split('T')[0];
+const bookingForm = document.querySelector('.booking-form');
+const toast = document.querySelector('.toast');
+let toastTimer;
+function showToast(title, message) {
+  toast.querySelector('span').innerHTML = `${title}<small>${message}</small>`;
+  toast.classList.add('show'); clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 5000);
+}
+document.querySelectorAll('[data-demo-link]').forEach(button => button.addEventListener('click', () => {
+  const isBooksy = button.dataset.demoLink === 'booksy';
+  showToast(
+    isBooksy ? 'Przykładowa integracja Booksy' : 'Przykładowa lokalizacja',
+    isBooksy ? 'W prawdziwej wersji ten przycisk otworzy profil salonu w Booksy.' : 'W prawdziwej wersji ten przycisk otworzy dokładną trasę do salonu.'
+  );
+}));
+bookingForm.addEventListener('submit', event => {
+  event.preventDefault();
+  if (!bookingForm.checkValidity()) { bookingForm.reportValidity(); return; }
+  bookingForm.reset(); dateInput.min = new Date().toISOString().split('T')[0];
+  showToast('Dziękujemy!', 'Formularz demonstracyjny został wysłany.');
+});
